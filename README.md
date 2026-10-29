@@ -1,22 +1,20 @@
 # Minesweeper With Friends
 
-Real-time co-op Minesweeper for up to four players, right in the browser. Create a lobby, share it with friends, and clear the board together. Everyone sees each other's cursors and flags live.
+I love Minesweeper, but it's always been a solo game. So I made a version you can play together: up to four people on the same board, in real time, straight from the browser. You create a lobby, your friends join, and you clear the board as a team while seeing each other's cursors and flags move around.
 
-**Play it:** [ms.juancarloscj.com](https://ms.juancarloscj.com)
+**You can play it here:** [ms.juancarloscj.com](https://ms.juancarloscj.com)
 
 ![A co-op game in progress](docs/game.png)
 
-## Features
+## What it does
 
-- **Lobbies for up to 4 players.** Create one or join from the lobby browser. Each player gets a random name and a colour.
-- **Live co-op board.** Every reveal, flag and win or loss reaches all players instantly over WebSockets.
-- **Shared cursors.** See where your friends are pointing.
-- **Personal flags.** Flags show their owner's colour, only the owner can remove them, and the scoreboard counts each player's flags.
-- **Plays on phones and tablets.** Touch controls, a board that sizes itself to the screen, and layouts for phones, tablets and landscape.
-- **English and Spanish.** Picked automatically from the browser, switchable at any time, and remembered.
-- **Four difficulties:** Easy (15×15, 40 mines), Medium (29×20, 135), Hard (29×29, 200) and Custom (up to 100×100).
-- **Server-authoritative.** The board only exists on the server; clients receive just the cells that get revealed, so nobody can peek at the mines.
-- **Original pixel-art look.** Every graphic is drawn from code (see [Artwork](#artwork)).
+Everyone who joins gets a random name (things like "Sneaky Minefield") and their own colour. When someone reveals a cell or places a flag, it shows up for everyone instantly. Flags keep their owner's colour and only the person who placed one can remove it, and there's a little scoreboard counting each player's flags.
+
+There are four difficulties: Easy (15×15, 40 mines), Medium (29×20, 135), Hard (29×29, 200), and Custom if you want something bigger, up to 100×100.
+
+It works on phones and tablets too. The board sizes itself to your screen, and there are proper touch controls. The interface is in English and Spanish; it picks the language from your browser and you can switch whenever you want.
+
+One thing I cared about: the board only exists on the server. Your browser only ever receives the cells that have been revealed, so nobody can open the dev tools and peek at where the mines are.
 
 | Main menu | Lobby | Game over |
 |---|---|---|
@@ -33,13 +31,15 @@ Real-time co-op Minesweeper for up to four players, right in the browser. Create
 | Zoom, back to menu | Hover the panel in the top-right corner | Tap the panel in the top-right corner |
 | Scoreboard | Hover the panel on the left | Tap the panel on the left |
 
-Big boards scroll on small screens; the counters and the smiley stay in view.
+On small screens big boards scroll, but the counters and the smiley stay in view.
 
 | Phone: menu | Phone: lobby | Phone: game |
 |---|---|---|
 | ![Phone menu](docs/mobile.png) | ![Phone lobby](docs/mobile-lobby.png) | ![Phone game](docs/mobile-game.png) |
 
-## How it works
+## How I built it
+
+The backend is a small Node.js server (Express + [`ws`](https://github.com/websockets/ws)) and the frontend is plain JavaScript split into ES modules. No framework and no build step; I wanted to keep it simple.
 
 ```
 Browser (public/)                               Node.js server (server/)
@@ -51,14 +51,16 @@ lobby.js   lobby and lobby browser               game/board.js    mines, flood f
 i18n.js    English / Spanish texts                protocol.js  message codes
 ```
 
-- One HTTP server serves the page and the WebSocket on the same address. The client connects back to whatever host it was loaded from (`wss://` on HTTPS), so the same code runs locally and behind a hosting proxy.
-- Messages are small JSON objects like `{ "action": "CD", "content": { "cellX": 3, "cellY": 7 } }`. Every code is listed and explained in [`server/protocol.js`](server/protocol.js).
-- The server checks everything it receives: coordinates, custom board limits, flag ownership, and who is allowed to start a game.
-- Dead connections are dropped with a ping/pong heartbeat.
+A few decisions worth mentioning:
 
-## Run it locally
+- The page and the WebSocket are served from the same server and port. The client just connects back to whatever host it was loaded from, so the exact same code runs on my laptop and behind a proxy in production.
+- The messages are tiny JSON objects like `{ "action": "CD", "content": { "cellX": 3, "cellY": 7 } }`. I kept the action codes short because cursor positions are sent many times per second. They're all listed and explained in [`server/protocol.js`](server/protocol.js).
+- The server doesn't trust anything the client sends. It checks coordinates, custom board sizes, who owns a flag and who's allowed to start a game.
+- A ping/pong heartbeat drops connections that went quiet (closed laptop, lost Wi-Fi…), so ghost players don't stay in lobbies.
 
-Requires [Node.js](https://nodejs.org) 18 or newer.
+## Running it locally
+
+You'll need [Node.js](https://nodejs.org) 18 or newer.
 
 ```bash
 git clone https://github.com/JuanCarlosCJ/minesweeper-with-friends.git
@@ -67,14 +69,14 @@ npm install
 npm start
 ```
 
-Open http://localhost:3000. To play with yourself, open a second browser window: create a lobby in one and join it from the other.
+Then open http://localhost:3000. To try multiplayer on your own, open a second browser window: create a lobby in one and join it from the other.
 
 | Command | What it does |
 |---|---|
 | `npm start` | Starts the server (port `3000`, or `PORT` if set) |
-| `npm run dev` | Same, restarting automatically when server files change |
-| `npm test` | Runs the board rule tests |
-| `npm run art` | Regenerates all graphics in `public/img/` (needs Python 3) |
+| `npm run dev` | Same, but restarts when server files change |
+| `npm test` | Runs the tests for the board rules |
+| `npm run art` | Regenerates all the graphics in `public/img/` (needs Python 3) |
 
 ## Project structure
 
@@ -93,17 +95,17 @@ public/            the browser client (no build step)
   js/              ES modules
   img/             generated SVG graphics
   fonts/           Pixelify Sans (SIL Open Font License)
-test/              Node test runner tests
+test/              tests (Node's built-in test runner)
 tools/             graphics generator
 docs/              screenshots
 ```
 
-## Deployment
+## How I deploy it
 
-The server is a plain Node.js app that listens on `PORT`. A typical production setup is a process manager to keep it running, plus a web server in front of it for HTTPS:
+It's just a Node.js app listening on `PORT`, so it runs anywhere Node does. On my server I keep it alive with a process manager and put a web server in front of it for HTTPS:
 
-1. Upload the project and install dependencies: `npm ci --omit=dev`.
-2. Run it with [pm2](https://pm2.keymetrics.io/), which restarts it if it crashes and starts it at boot:
+1. Upload the project and install the dependencies with `npm ci --omit=dev`.
+2. Run it with [pm2](https://pm2.keymetrics.io/), which restarts it if it crashes and brings it back after a reboot:
 
    ```bash
    PORT=3101 pm2 start server/index.js --name minesweeper
@@ -111,7 +113,7 @@ The server is a plain Node.js app that listens on `PORT`. A typical production s
    pm2 startup
    ```
 
-3. Put a reverse proxy in front of it that also forwards WebSocket upgrades. For nginx:
+3. Put a reverse proxy in front that also forwards WebSocket upgrades. With nginx it looks like this:
 
    ```nginx
    location / {
@@ -123,11 +125,11 @@ The server is a plain Node.js app that listens on `PORT`. A typical production s
    }
    ```
 
-The proxy handles HTTPS and certificate renewals, so the game itself never deals with certificates.
+The proxy takes care of HTTPS and certificate renewals, so the game itself never has to deal with certificates.
 
 ## Artwork
 
-All graphics (tiles, numbers, mines, flags, cursors, the hard-hat smiley and the counter digits) are original and generated by [`tools/generate-art.py`](tools/generate-art.py). Colours and pixel maps sit at the top of that file. Change them and run `npm run art`.
+All the graphics are drawn from code by [`tools/generate-art.py`](tools/generate-art.py): the tiles, numbers, mines, flags, cursors, counter digits and my little hard-hat smiley. The colours and pixel maps are at the top of that file, so if you want to tweak something, change it there and run `npm run art`.
 
 ![All game graphics](docs/artwork.png)
 
