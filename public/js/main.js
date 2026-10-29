@@ -4,7 +4,7 @@ import { state } from './state.js';
 import { on, send } from './socket.js';
 import { decodeColor } from './colors.js';
 import { initLanguage } from './i18n.js';
-import { createBoard, revealCells, flagCell, moveCursor, lostGame, wonGame, changeZoom } from './board.js';
+import { createBoard, revealCells, flagCell, moveCursor, lostGame, wonGame, changeZoom, toggleFlagMode } from './board.js';
 import {
   openOwnLobby, openJoinedLobby, updateLobby, onLobbyDetailsClick,
   openBrowser, updateBrowser, joinFailed, backToMenu, lobbyDisbanded,
@@ -60,10 +60,29 @@ document.querySelector('.availableLobbies').addEventListener('click', (e) => {
 document.querySelector('.smileyFace').addEventListener('click', () => send('STG'));
 
 document.querySelector('.boardMenu').addEventListener('click', (e) => {
-  if (e.target.closest('.zoomIn')) changeZoom(10);
-  if (e.target.closest('.zoomOut')) changeZoom(-10);
+  if (e.target.closest('.zoomIn')) changeZoom(1);
+  if (e.target.closest('.zoomOut')) changeZoom(-1);
   if (e.target.closest('.boardBackToMenu')) {
     lostGame();
     backToMenu();
   }
+});
+
+document.querySelector('.flagModeButton').addEventListener('click', toggleFlagMode);
+
+// Side panels (zoom/menu and scoreboard) open on hover with a mouse.
+// On touch screens the first tap opens a panel, and tapping elsewhere closes it.
+const panels = document.querySelectorAll('.boardMenu, .boardPlayersWrapper');
+const noHover = window.matchMedia('(hover: none)');
+panels.forEach((panel) => {
+  panel.addEventListener('click', (e) => {
+    if (!noHover.matches || panel.classList.contains('open')) return;
+    panel.classList.add('open');
+    e.stopPropagation(); // the opening tap shouldn't also press a button inside
+  }, true);
+});
+document.addEventListener('click', (e) => {
+  panels.forEach((panel) => {
+    if (!panel.contains(e.target)) panel.classList.remove('open');
+  });
 });

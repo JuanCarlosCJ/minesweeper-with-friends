@@ -1,9 +1,10 @@
-// The game board: drawing cells, counters, flags, cursors and handling clicks.
+// The game board: drawing cells, counters, flags and cursors, sizing the board
+// to the screen, and handling mouse and touch input.
 
 import { state } from './state.js';
 import { send } from './socket.js';
 import { encodeColor } from './colors.js';
-import { showScreen, cellAt } from './ui.js';
+import { showScreen, cellAt, toast } from './ui.js';
 import { t } from './i18n.js';
 
 const NEIGHBOURS = [
@@ -11,22 +12,30 @@ const NEIGHBOURS = [
   [1, 1], [-1, -1], [1, -1], [-1, 1],
 ];
 
-const boardEl = () => document.querySelector('.board');
+const LONG_PRESS_MS = 420; // hold this long on a touch screen to place a flag
+const TOUCH_SLOP_PX = 10; // moving further than this is a scroll, not a tap
+
 const cellsEl = () => document.querySelector('.bottomArea');
 const smileyEl = () => document.querySelector('.smileyFace');
+const isTouchScreen = () => window.matchMedia('(pointer: coarse)').matches;
 
 let timerInterval = null;
 let chordingInterval = null;
 let cursorInterval = null;
 let firstBoard = true;
+let playing = false;
 
-// Mouse tracking (for chording and for sharing my cursor)
-let mouseX = 0;
-let mouseY = 0;
+// Pointer tracking (for the pressed look and for sharing my cursor)
+let pointerX = 0;
+let pointerY = 0;
 let mouseIsDown = false;
 let lastCellVisited = null;
-let lastNeighboursVisited = null;
 let lastCursorSent = null;
+
+// Touch state
+let touch = null; // { cell, x, y, timer, longPressed }
+let lastTouchTime = 0;
+let flagMode = false;
 
 // ---------- starting a game ----------
 
@@ -42,6 +51,8 @@ export function createBoard(width, height, mineCount, lobbyPlayers) {
   const myColor = encodeColor(state.color);
   document.querySelector('.mineCounter').className = `mineCounter ${myColor}hueRotate`;
   document.querySelector('.timer').className = `timer ${myColor}hueRotate`;
+  document.querySelector('.flagModeIcon').className = `flagModeIcon ${myColor}flag`;
+  setFlagMode(false);
 
   renderScoreboard(lobbyPlayers);
   renderCursors(lobbyPlayers);
@@ -60,8 +71,8 @@ export function createBoard(width, height, mineCount, lobbyPlayers) {
     fragment.appendChild(cell);
   }
   container.replaceChildren(fragment);
-  container.style.gridTemplateColumns = `repeat(${width}, minmax(0, 1fr))`;
-  container.style.gridTemplateRows = `repeat(${height}, minmax(0, 1fr))`;
+  container.style.gridTemplateColumns = `repeat(${width}, var(--cell))`;
+  container.style.gridTemplateRows = `repeat(${height}, var(--cell))`;
 
   // Smiley: short "pressed" look when restarting
   const smiley = smileyEl();
@@ -73,15 +84,16 @@ export function createBoard(width, height, mineCount, lobbyPlayers) {
   firstBoard = false;
 
   showScreen('.boardArea');
+  fitBoard();
+  showTouchHint();
 
+  playing = true;
   timerInterval = setInterval(() => {
     state.timer++;
     updateTimer();
   }, 1000);
-  chordingInterval = setInterval(chording, 20);
+  chordingInterval = setInterval(showPressed, 20);
   cursorInterval = setInterval(sendCursor, 50);
-  container.addEventListener('contextmenu', onRightClick);
-  container.addEventListener('mouseup', onCellClick);
 }
 
 function renderScoreboard(players) {
@@ -124,13 +136,45 @@ function renderCursors(players) {
 }
 
 function stopGameLoops() {
+  playing = false;
   clearInterval(timerInterval);
   clearInterval(chordingInterval);
   clearInterval(cursorInterval);
-  const container = cellsEl();
-  container.removeEventListener('contextmenu', onRightClick);
-  container.removeEventListener('mouseup', onCellClick);
+  cancelTouch();
 }
+
+// ---------- fitting the board to the screen ----------
+
+let zoom = 1;
+
+// Picks a cell size so the whole board fits the screen. On touch screens cells
+// never get smaller than a comfortable tap size; the board scrolls instead.
+// The zoom buttons scale the result.
+export function fitBoard() {
+  if (!state.width || document.querySelector('.boardArea').classList.contains('displayNone')) return;
+
+  // Space used around the cells: board padding, frames and the counters bar.
+  const px = (el, ...props) => props.reduce((sum, p) => sum + parseFloat(getComputedStyle(el)[p]), 0);
+  const board = document.querySelector('.board');
+  const wrapper = document.querySelector('.bottomAreaWrapper');
+  const grid = cellsEl();
+  const aroundX = px(board, 'paddingLeft', 'paddingRight') + px(wrapper, 'paddingLeft', 'paddingRight') + px(grid, 'paddingLeft', 'paddingRight');
+  const aroundY = px(board, 'paddingTop', 'paddingBottom') + px(wrapper, 'paddingTop', 'paddingBottom')
+    + px(grid, 'paddingTop', 'paddingBottom') + document.querySelector('.topAreaWrapper').offsetHeight;
+
+  const area = document.querySelector('.boardArea');
+  const fit = Math.floor(Math.min((area.clientWidth - aroundX) / state.width, (area.clientHeight - aroundY) / state.height));
+  const min = isTouchScreen() ? 24 : 18;
+  const size = Math.round(Math.max(min, Math.min(44, fit)) * zoom);
+  document.documentElement.style.setProperty('--cell', `${size}px`);
+}
+
+export function changeZoom(direction) {
+  zoom = Math.max(0.5, Math.min(2.5, zoom * (direction > 0 ? 1.15 : 1 / 1.15)));
+  fitBoard();
+}
+
+window.addEventListener('resize', fitBoard);
 
 // ---------- updates from the server ----------
 
@@ -154,6 +198,7 @@ export function flagCell({ color, x, y }) {
     cell.className = 'cell closed';
     state.minesLeft++;
   } else {
+    cell.classList.remove('pressed');
     cell.classList.add('flagged', `${code}flag`);
     state.minesLeft--;
   }
@@ -167,6 +212,8 @@ export function flagCell({ color, x, y }) {
   }
 }
 
+// Other players' cursors arrive as % of the grid of cells, so they point at
+// the same cell whatever the screen size.
 export function moveCursor({ player, x, y }) {
   const cursor = document.querySelector(`.multiplayerCursors [data-playerid="${player}"]`);
   if (!cursor) return;
@@ -174,9 +221,11 @@ export function moveCursor({ player, x, y }) {
     cursor.style.display = 'none';
     return;
   }
+  const grid = cellsEl().getBoundingClientRect();
+  const layer = document.querySelector('.multiplayerCursors').getBoundingClientRect();
   cursor.style.display = 'block';
-  cursor.style.left = `${x}%`;
-  cursor.style.top = `${y}%`;
+  cursor.style.left = `${grid.left - layer.left + (x / 100) * grid.width}px`;
+  cursor.style.top = `${grid.top - layer.top + (y / 100) * grid.height}px`;
 }
 
 export function lostGame(details) {
@@ -218,65 +267,82 @@ function updateTimer() {
   setDials('timer', state.timer);
 }
 
-// ---------- my clicks ----------
+// ---------- actions (shared by mouse and touch) ----------
 
-function onCellClick(e) {
-  const cell = e.target;
-  if (e.button === 2 || !cell.classList.contains('cell') || cell.classList.contains('flagged')) return;
+const isNumber = (cell) => /\btype\d\b/.test(cell.className);
+const coords = (cell) => ({ cellX: cell.dataset.coordX, cellY: cell.dataset.coordY });
 
-  // Chording: clicking an open number whose flags are all placed opens the rest.
-  if (/\btype\d\b/.test(cell.className) && lastNeighboursVisited) {
-    const type = Number(cell.className.match(/\btype(\d)\b/)[1]);
-    let flags = 0;
-    const closed = [];
-    for (const [x, y] of lastNeighboursVisited) {
-      const neighbour = cellAt(x, y);
-      if (neighbour.classList.contains('flagged')) flags++;
-      else if (neighbour.classList.contains('closed')) closed.push([x, y]);
-    }
-    if (type === flags && closed.length) send('CCD', closed);
-    lastNeighboursVisited = null;
-    return;
-  }
-
-  if (!cell.classList.contains('closed')) return;
-  send('CD', { cellX: cell.dataset.coordX, cellY: cell.dataset.coordY });
+function neighboursOf(cell) {
+  const x = Number(cell.dataset.coordX);
+  const y = Number(cell.dataset.coordY);
+  return NEIGHBOURS
+    .map(([dx, dy]) => [x + dx, y + dy])
+    .filter(([nx, ny]) => nx >= 0 && ny >= 0 && nx < state.width && ny < state.height);
 }
 
-function onRightClick(e) {
-  e.preventDefault();
-  const cell = e.target.closest('.cell');
-  if (!cell || !cell.classList.contains('closed')) return;
+function reveal(cell) {
+  if (cell.classList.contains('closed') && !cell.classList.contains('flagged')) send('CD', coords(cell));
+}
+
+// Chording: on an open number whose flags are all placed, open the rest around it.
+function chord(cell) {
+  const type = Number(cell.className.match(/\btype(\d)\b/)[1]);
+  let flags = 0;
+  const closed = [];
+  for (const [x, y] of neighboursOf(cell)) {
+    const neighbour = cellAt(x, y);
+    if (neighbour.classList.contains('flagged')) flags++;
+    else if (neighbour.classList.contains('closed')) closed.push([x, y]);
+  }
+  if (type > 0 && type === flags && closed.length) send('CCD', closed);
+}
+
+function toggleFlag(cell) {
+  if (!cell.classList.contains('closed')) return;
   // Can't remove someone else's flag
   const mine = cell.classList.contains(`${encodeColor(state.color)}flag`);
   if (cell.classList.contains('flagged') && !mine) return;
-  send('CFG', { cellX: cell.dataset.coordX, cellY: cell.dataset.coordY });
+  send('CFG', coords(cell));
+}
+
+// ---------- mouse ----------
+
+// Browsers fire fake mouse events after a touch; ignore those.
+const fromRecentTouch = () => Date.now() - lastTouchTime < 800;
+
+function onMouseUp(e) {
+  if (!playing || fromRecentTouch() || e.button !== 0) return;
+  const cell = e.target.closest('.cell');
+  if (!cell) return;
+  if (isNumber(cell)) chord(cell);
+  else reveal(cell);
+}
+
+function onContextMenu(e) {
+  e.preventDefault();
+  if (!playing || fromRecentTouch()) return; // a long-press already placed the flag
+  const cell = e.target.closest('.cell');
+  if (cell) toggleFlag(cell);
 }
 
 // While the mouse is held down, show which cells would open (classic "pressed" look).
-function chording() {
+function showPressed() {
   if (!mouseIsDown) return;
-  const cell = document.elementFromPoint(mouseX, mouseY)?.closest('.cell');
+  const cell = document.elementFromPoint(pointerX, pointerY)?.closest('.cell');
 
   if (cell !== lastCellVisited) clearPressed();
   lastCellVisited = cell;
   if (!cell || cell.classList.contains('flagged')) return;
 
-  if (/\btype\d\b/.test(cell.className)) {
-    const x = Number(cell.dataset.coordX);
-    const y = Number(cell.dataset.coordY);
-    lastNeighboursVisited = NEIGHBOURS
-      .map(([dx, dy]) => [x + dx, y + dy])
-      .filter(([nx, ny]) => nx >= 0 && ny >= 0 && nx < state.width && ny < state.height);
-    for (const [nx, ny] of lastNeighboursVisited) {
-      const neighbour = cellAt(nx, ny);
+  if (isNumber(cell)) {
+    for (const [x, y] of neighboursOf(cell)) {
+      const neighbour = cellAt(x, y);
       if (neighbour.classList.contains('closed') && !neighbour.classList.contains('flagged')) {
         neighbour.classList.add('pressed');
       }
     }
-  } else {
-    lastNeighboursVisited = null;
-    if (cell.classList.contains('closed')) cell.classList.add('pressed');
+  } else if (cell.classList.contains('closed')) {
+    cell.classList.add('pressed');
   }
 }
 
@@ -284,12 +350,98 @@ function clearPressed() {
   document.querySelectorAll('.cell.pressed').forEach((c) => c.classList.remove('pressed'));
 }
 
-// Share my cursor position with the lobby, as % of the board.
+// ---------- touch ----------
+// Tap: reveal (or chord on a number). Long-press: flag. Flag mode: taps flag.
+// Dragging scrolls the board as usual.
+
+function onTouchStart(e) {
+  lastTouchTime = Date.now();
+  if (!playing || e.touches.length !== 1) {
+    cancelTouch(); // two fingers = pinch zoom / scroll
+    return;
+  }
+  const cell = e.target.closest('.cell');
+  if (!cell) return;
+
+  const { clientX, clientY } = e.touches[0];
+  pointerX = clientX;
+  pointerY = clientY;
+  if (cell.classList.contains('closed') && !cell.classList.contains('flagged')) cell.classList.add('pressed');
+
+  touch = {
+    cell,
+    x: clientX,
+    y: clientY,
+    longPressed: false,
+    timer: setTimeout(() => {
+      if (!touch) return;
+      touch.longPressed = true;
+      cell.classList.remove('pressed');
+      toggleFlag(cell);
+      navigator.vibrate?.(25);
+    }, LONG_PRESS_MS),
+  };
+}
+
+function onTouchMove(e) {
+  if (!touch) return;
+  const { clientX, clientY } = e.touches[0];
+  if (Math.hypot(clientX - touch.x, clientY - touch.y) > TOUCH_SLOP_PX) cancelTouch();
+}
+
+function onTouchEnd(e) {
+  lastTouchTime = Date.now();
+  if (!touch) return;
+  const { cell, longPressed } = touch;
+  cancelTouch();
+  e.preventDefault(); // stop the browser's fake mouse click
+  if (longPressed) return;
+
+  if (flagMode) toggleFlag(cell);
+  else if (isNumber(cell)) chord(cell);
+  else reveal(cell);
+}
+
+function cancelTouch() {
+  if (!touch) return;
+  clearTimeout(touch.timer);
+  touch.cell.classList.remove('pressed');
+  touch = null;
+}
+
+// Explain the touch controls the first time someone plays on a touch screen.
+function showTouchHint() {
+  if (!isTouchScreen()) return;
+  try {
+    if (localStorage.getItem('msf-touch-hint')) return;
+    localStorage.setItem('msf-touch-hint', '1');
+  } catch {
+    // private mode: show it every time
+  }
+  toast(t('touchHint'));
+}
+
+export function setFlagMode(on) {
+  flagMode = on;
+  const button = document.querySelector('.flagModeButton');
+  button.setAttribute('aria-pressed', String(on));
+}
+
+export function toggleFlagMode() {
+  setFlagMode(!flagMode);
+}
+
+// ---------- sharing my cursor ----------
+
+// Sent as % of the grid of cells, -1 when outside it.
 function sendCursor() {
-  const rect = boardEl().getBoundingClientRect();
-  const inside = mouseX >= rect.left && mouseX <= rect.right && mouseY >= rect.top && mouseY <= rect.bottom;
+  const grid = cellsEl().getBoundingClientRect();
+  const inside = pointerX >= grid.left && pointerX <= grid.right && pointerY >= grid.top && pointerY <= grid.bottom;
   const position = inside
-    ? { x: Number((((mouseX - rect.left) / rect.width) * 100).toFixed(1)), y: Number((((mouseY - rect.top) / rect.height) * 100).toFixed(1)) }
+    ? {
+      x: Number((((pointerX - grid.left) / grid.width) * 100).toFixed(1)),
+      y: Number((((pointerY - grid.top) / grid.height) * 100).toFixed(1)),
+    }
     : { x: -1, y: -1 };
 
   const key = `${position.x},${position.y}`;
@@ -298,27 +450,28 @@ function sendCursor() {
   send('MPU', position);
 }
 
-// ---------- zoom ----------
-
-let zoom = 60;
-export function changeZoom(step) {
-  zoom = Math.max(30, Math.min(200, zoom + step));
-  boardEl().style.width = `${zoom}%`;
-}
-
 export function leaveBoard() {
   stopGameLoops();
 }
 
-// ---------- global mouse listeners ----------
+// ---------- listeners ----------
+
+const container = cellsEl();
+container.addEventListener('mouseup', onMouseUp);
+container.addEventListener('contextmenu', onContextMenu);
+container.addEventListener('touchstart', onTouchStart, { passive: true });
+container.addEventListener('touchmove', onTouchMove, { passive: true });
+container.addEventListener('touchend', onTouchEnd);
+container.addEventListener('touchcancel', cancelTouch);
 
 document.addEventListener('mousemove', (e) => {
-  mouseX = e.clientX;
-  mouseY = e.clientY;
+  if (fromRecentTouch()) return;
+  pointerX = e.clientX;
+  pointerY = e.clientY;
 });
 
 document.addEventListener('mousedown', (e) => {
-  if (e.button !== 2) mouseIsDown = true;
+  if (e.button === 0 && !fromRecentTouch()) mouseIsDown = true;
 });
 
 document.addEventListener('mouseup', () => {
