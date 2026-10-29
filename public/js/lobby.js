@@ -46,7 +46,7 @@ export function updateLobby(lobby) {
 function renderLobby(lobby) {
   state.lobbyPlayers = lobby.players;
 
-  const me = document.querySelector('.lobbyPlayerDetails p span');
+  const me = document.querySelector('.lobby .myName');
   me.textContent = state.username;
   me.style.color = state.color;
 
@@ -134,7 +134,7 @@ export function onLobbyDetailsClick(e) {
 // ---------- lobby browser ----------
 
 export function openBrowser() {
-  const me = document.querySelector('.lobbyBrowserPlayerDetails p span');
+  const me = document.querySelector('.lobbyBrowser .myName');
   me.textContent = state.username;
   me.style.color = state.color;
 
@@ -157,8 +157,9 @@ export function updateBrowser(lobbies) {
 
   const list = document.querySelector('.availableLobbies');
   list.replaceChildren();
-  for (const lobby of lobbies) {
-    if (lobby.playing) continue;
+  const open = lobbies.filter((lobby) => !lobby.playing);
+  document.querySelector('.noLobbies').classList.toggle('displayNone', open.length > 0);
+  for (const lobby of open) {
     const host = lobby.players[0];
     const color = decodeColor(host.playerColor);
 
@@ -181,8 +182,13 @@ export function updateBrowser(lobbies) {
   }
 }
 
+// The server explains why joining failed (in English); show it in the player's language.
 export function joinFailed(reason) {
-  toast(String(reason || 'Could not join that lobby.').replace(/^Error:\s*/, ''));
+  const text = String(reason || '');
+  if (/disbanded/i.test(text)) toast(t('lobbyGone'));
+  else if (/full/i.test(text)) toast(t('lobbyFull'));
+  else if (/playing/i.test(text)) toast(t('lobbyPlaying'));
+  else toast(t('joinFailed'));
 }
 
 // ---------- leaving ----------
@@ -204,5 +210,5 @@ export function lobbyDisbanded() {
   state.lobbyPlayers = [];
   state.isHost = false;
   showScreen('.mainMenu');
-  toast('The host closed the lobby.');
+  toast(t('hostLeft'));
 }

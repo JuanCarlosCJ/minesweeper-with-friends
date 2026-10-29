@@ -96,8 +96,12 @@ function renderScoreboard(players) {
 
     const score = document.createElement('p');
     score.dataset.flags = 0;
-    score.append(`${t('flags')} `);
+    const label = document.createElement('span');
+    label.dataset.i18n = 'flags';
+    label.textContent = t('flags');
+    score.append(label, ' ');
     const count = document.createElement('span');
+    count.className = 'flagCount';
     count.textContent = '0';
     score.appendChild(count);
 
@@ -159,7 +163,7 @@ export function flagCell({ color, x, y }) {
   if (score) {
     const flags = Number(score.dataset.flags) + (removing ? -1 : 1);
     score.dataset.flags = flags;
-    score.querySelector('span').textContent = flags;
+    score.querySelector('.flagCount').textContent = flags;
   }
 }
 

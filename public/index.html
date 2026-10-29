@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Minesweeper With Friends</title>
     <meta name="description" content="Play co-op Minesweeper with up to four friends, right in your browser.">
     <link rel="icon" type="image/svg+xml" href="img/redFlag.svg">
@@ -19,163 +19,134 @@
     <script type="module" src="js/main.js"></script>
 </head>
 <body>
- <div class="gameAreas">
-     <div class="mainMenu">
+    <div class="gameAreas">
 
-       <div class="languageChanger" style="display:none;">
-            <img src="img/esFlag.png" alt="Español">
-       </div> 
-
-         <div class="titleCard">
-             <p><span style="color:#0000ff;">M</span>ine<span style="color:#008000;margin-left: 0.08em;">S</span>weeper <span style="color:#ff0000;">W</span>ith <span style="color:#000080;">F</span>riends</p>
+        <!-- Main menu -->
+        <div class="mainMenu">
+            <div class="titleCard">
+                <p><span style="color:#0000ff;">M</span>ine<span style="color:#008000;margin-left: 0.08em;">S</span>weeper <span style="color:#ff0000;">W</span>ith <span style="color:#000080;">F</span>riends</p>
             </div>
             <div class="mainMenuContents">
-                <p width="10em" data-action="CL">Create Lobby</p>
-                <p data-action="FL">Find Lobby</p>
+                <p data-action="CL" data-i18n="createLobby">Create Lobby</p>
+                <p data-action="FL" data-i18n="findLobby">Find Lobby</p>
             </div>
             <div class="frame"></div>
         </div>
-        <div class="lobby displayNone">
-        <div class="backToMenu">Back to Menu</div>
 
+        <!-- My lobby -->
+        <div class="lobby displayNone">
             <div class="frame"></div>
+            <div class="backToMenu" data-i18n="backToMenu">Back to Menu</div>
             <div class="lobbyPlayerDetails">
-                <p>Username: <span>X</span></p>
+                <p><span data-i18n="username">Username:</span> <span class="myName"></span></p>
                 <div class="difficulties">
-                    <p class="chosenDifficulty" data-difficulty="easy">Easy</p>
-                    <p data-difficulty="medium">Medium</p>
-                    <p data-difficulty="hard">Hard</p>
-                    <p data-difficulty="custom">Custom</p>
+                    <p class="chosenDifficulty" data-difficulty="easy" data-i18n="easy">Easy</p>
+                    <p data-difficulty="medium" data-i18n="medium">Medium</p>
+                    <p data-difficulty="hard" data-i18n="hard">Hard</p>
+                    <p data-difficulty="custom" data-i18n="custom">Custom</p>
                     <div class="customDifficulty displayNone">
                         <div class="customSettings">
-
                             <div class="customMineX">
-                                <p>Width</p>
-                                <input type="number" min="1" max="100" value="10">
+                                <p data-i18n="width">Width</p>
+                                <input type="number" min="5" max="100" value="10" inputmode="numeric">
                             </div>
                             <div class="customMineY">
-                                <p>Height</p>
-                                <input type="number" min="1" max="100" value="10">
+                                <p data-i18n="height">Height</p>
+                                <input type="number" min="5" max="100" value="10" inputmode="numeric">
                             </div>
                             <div class="customMineCount">
-                                <p>Mines</p>
-                                <input type="number" min="1" max="100" value="35">
+                                <p data-i18n="mines">Mines</p>
+                                <input type="number" min="1" max="8000" value="35" inputmode="numeric">
                             </div>
                         </div>
                         <div class="customConfirmation">
-                            <p>Confirm</p>
+                            <p data-i18n="confirm">Confirm</p>
                         </div>
                     </div>
                 </div>
                 <div class="playButton displayNone">
-                    <p>Play!</p>
+                    <p data-i18n="play">Play!</p>
                 </div>
             </div>
             <div class="lobbyPlayers">
-                <div class="lobbyPlayer1">
-                    <p></p>
-                    <div class="frame"></div>
-                </div>
-                <div class="lobbyPlayer2 noPlayer">
-                    <p>Waiting for player...</p>
-                    <div class="frame"></div>
-                </div>
-                <div class="lobbyPlayer3 noPlayer">
-                    <p>Waiting for player...</p>
-                    <div class="frame"></div>
-                </div>
-                <div class="lobbyPlayer4 noPlayer">
-                    <p>Waiting for player...</p>
-                    <div class="frame"></div>
-                </div>
-
+                <div class="lobbyPlayer1"><p></p><div class="frame"></div></div>
+                <div class="lobbyPlayer2 noPlayer"><p></p><div class="frame"></div></div>
+                <div class="lobbyPlayer3 noPlayer"><p></p><div class="frame"></div></div>
+                <div class="lobbyPlayer4 noPlayer"><p></p><div class="frame"></div></div>
             </div>
         </div>
+
+        <!-- The game -->
         <div class="boardArea displayNone">
             <div class="boardMenu">
                 <div class="frame"></div>
                 <div class="zoomMenu">
-
-                    <div class="zoomIn">
-                        <p>+</p>
-                    </div>
-                    <div class="zoomOut">
-                        <p>-</p>
-                    </div>
+                    <div class="zoomIn" role="button" aria-label="Zoom in"><p>+</p></div>
+                    <div class="zoomOut" role="button" aria-label="Zoom out"><p>-</p></div>
                 </div>
-
-                <div class="boardBackToMenu">
-                    <p>Back to Menu</p>
+                <div class="boardBackToMenu" role="button">
+                    <p data-i18n="backToMenu">Back to Menu</p>
                 </div>
             </div>
 
-       
-
             <div class="board">
-               
                 <div class="multiplayerCursors"></div>
 
                 <div class="topAreaWrapper">
-                <div class="topArea">
-                    <div class="mineCounter">
-                        <div class="mineCounter0"></div>
-                        <div class="mineCounter1"></div>
-                        <div class="mineCounter2"></div>
-                    </div>
-                    
-                    <div class="smileyFace">
-                        
-                    </div>
-                    <div class="timer">
-                        <div class="timer0"></div>
-                        <div class="timer1"></div>
-                        <div class="timer2"></div>
+                    <div class="topArea">
+                        <div class="mineCounter">
+                            <div class="mineCounter0"></div>
+                            <div class="mineCounter1"></div>
+                            <div class="mineCounter2"></div>
+                        </div>
+                        <div class="smileyFace" role="button" aria-label="Restart"></div>
+                        <div class="timer">
+                            <div class="timer0"></div>
+                            <div class="timer1"></div>
+                            <div class="timer2"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="bottomAreaWrapper">
 
-                <div class="bottomArea">
-                    
-                    
+                <div class="bottomAreaWrapper">
+                    <div class="bottomArea"></div>
                 </div>
-                
-                
-                
             </div>
-            
+
+            <div class="boardPlayersWrapper">
+                <div class="boardPlayers"></div>
+                <div class="frame"></div>
+            </div>
         </div>
-        <div class="boardPlayersWrapper">
 
-            <div class="boardPlayers">
-                
-            </div>
+        <!-- Lobby browser -->
+        <div class="lobbyBrowser displayNone">
             <div class="frame"></div>
-        </div>
-    </div>
-
-    <div class="lobbyBrowser displayNone">
-        <div class="frame"></div>
-        <div class="backToMenu">Back to Menu</div>
-
-        <div class="lobbyBrowserPlayerDetails">
-                <p>Username: <span>X</span></p>
-           
-        </div>
-
-        <div class="availableLobbiesWrapper">
-
-            <div class="availableLobbies">
-                <div class="availableLobby">
-                    <p class="lobbyHostName"></p>
-                </div>
+            <div class="backToMenu" data-i18n="backToMenu">Back to Menu</div>
+            <div class="lobbyBrowserPlayerDetails">
+                <p><span data-i18n="username">Username:</span> <span class="myName"></span></p>
+            </div>
+            <div class="availableLobbiesWrapper">
+                <div class="availableLobbies"></div>
+                <p class="noLobbies" data-i18n="noLobbies">No open lobbies yet. Create one and invite your friends!</p>
             </div>
         </div>
     </div>
+
+    <!-- Language switch (menus only) -->
+    <div class="languageSwitch" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="es" aria-pressed="false">ES</button>
     </div>
+
+    <!-- Flag mode for touch screens: taps place flags instead of revealing -->
+    <button type="button" class="flagModeButton" aria-pressed="false">
+        <span class="flagModeIcon" aria-hidden="true"></span>
+        <span data-i18n="flagMode">Flag mode</span>
+    </button>
+
     <div class="backgroundImage">
         <img src="img/bg.svg" alt="">
-         </div>
+    </div>
 </body>
 </html>

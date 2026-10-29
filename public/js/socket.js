@@ -1,6 +1,7 @@
 // WebSocket connection to the game server (same host as the page).
 
 import { toast } from './ui.js';
+import { t } from './i18n.js';
 
 const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
 const socket = new WebSocket(`${protocol}://${location.host}`);
@@ -37,5 +38,5 @@ socket.addEventListener('message', (event) => {
 });
 
 socket.addEventListener('close', () => {
-  toast('Connection lost. Reload the page to play again.', { sticky: true });
+  toast(t('connectionLost'), { sticky: true });
 });

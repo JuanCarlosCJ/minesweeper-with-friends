@@ -833,21 +833,9 @@ flex-direction: column;
         pointer-events: none;
     }
 
-    .languageChanger img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-    }
 
-    .languageChanger {
-        position: fixed;
-        width: 10%;
-        height: auto;
-        top: -40%;
-        left: 100%;
-        cursor: pointer;
-    }
+
+
 
 
 @media only screen and (max-width:1600px){
@@ -1081,4 +1069,57 @@ p.lobbyPlayerCount {
     .lobbyBrowserPlayerDetails p {
         font-size: 1em;
     }
+}
+
+
+/* ---------- Language switch ---------- */
+
+.languageSwitch {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    z-index: 20;
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    background-color: var(--bevel-face);
+    box-shadow: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-shadow), 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.languageSwitch button {
+    min-width: 44px;
+    min-height: 36px;
+    font-family: 'Pixelify Sans', monospace;
+    font-size: 1rem;
+    color: #1d1d1f;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+
+.languageSwitch button[aria-pressed="true"] {
+    color: #ffffff;
+    background-color: #1d1d1f;
+}
+
+.languageSwitch button:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 1px;
+}
+
+body.inGame .languageSwitch {
+    display: none;
+}
+
+.noLobbies {
+    font-family: 'Pixelify Sans', monospace;
+    text-align: center;
+    padding: 2em 8%;
+    margin: 0;
+    color: #3f3f46;
+}
+
+/* Flag mode button: only shown during a game on touch screens (see the touch controls section) */
+.flagModeButton {
+    display: none;
 }

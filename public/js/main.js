@@ -3,7 +3,7 @@
 import { state } from './state.js';
 import { on, send } from './socket.js';
 import { decodeColor } from './colors.js';
-import { toggleLanguage } from './i18n.js';
+import { initLanguage } from './i18n.js';
 import { createBoard, revealCells, flagCell, moveCursor, lostGame, wonGame, changeZoom } from './board.js';
 import {
   openOwnLobby, openJoinedLobby, updateLobby, onLobbyDetailsClick,
@@ -37,6 +37,8 @@ on('GW', () => wonGame());
 
 // ---------- page buttons ----------
 
+initLanguage();
+
 document.querySelector('.titleCard p').classList.add('intro');
 
 document.querySelector('.mainMenuContents').addEventListener('click', (e) => {
@@ -44,8 +46,6 @@ document.querySelector('.mainMenuContents').addEventListener('click', (e) => {
   if (action === 'CL') send('CL');
   if (action === 'FL') send('FL');
 });
-
-document.querySelector('.languageChanger').addEventListener('click', toggleLanguage);
 
 document.querySelectorAll('.backToMenu').forEach((button) => button.addEventListener('click', backToMenu));
 

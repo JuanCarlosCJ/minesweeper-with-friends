@@ -5,6 +5,7 @@ export function showScreen(selector) {
   document.querySelectorAll('.gameAreas > div').forEach((screen) => {
     screen.classList.toggle('displayNone', !screen.matches(selector));
   });
+  document.body.classList.toggle('inGame', selector === '.boardArea');
 }
 
 export function cellAt(x, y) {
