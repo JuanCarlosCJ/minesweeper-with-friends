@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper With Friends</title>
+    <meta name="description" content="Play co-op Minesweeper with up to four friends, right in your browser.">
+    <link rel="icon" type="image/svg+xml" href="img/redFlag.svg">
+    <link rel="preload" href="fonts/PixelifySans.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="img/closed.svg" as="image">
+    <link rel="stylesheet" href="css/style.css">
+
+    <meta property="og:title" content="Minesweeper With Friends">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ms.juancarloscj.com/">
+    <meta property="og:image" content="https://ms.juancarloscj.com/img/og.png">
+    <meta property="og:description" content="Play co-op Minesweeper with up to four friends, right in your browser.">
+    <meta name="theme-color" content="#e11d2e">
+    <script type="module" src="js/main.js"></script>
+</head>
+<body>
+ <div class="gameAreas">
+     <div class="mainMenu">
+
+       <div class="languageChanger" style="display:none;">
+            <img src="img/esFlag.png" alt="Español">
+       </div> 
+
+         <div class="titleCard">
+             <p><span style="color:#0000ff;">M</span>ine<span style="color:#008000;margin-left: 0.08em;">S</span>weeper <span style="color:#ff0000;">W</span>ith <span style="color:#000080;">F</span>riends</p>
+            </div>
+            <div class="mainMenuContents">
+                <p width="10em" data-action="CL">Create Lobby</p>
+                <p data-action="FL">Find Lobby</p>
+            </div>
+            <div class="frame"></div>
+        </div>
+        <div class="lobby displayNone">
+        <div class="backToMenu">Back to Menu</div>
+
+            <div class="frame"></div>
+            <div class="lobbyPlayerDetails">
+                <p>Username: <span>X</span></p>
+                <div class="difficulties">
+                    <p class="chosenDifficulty" data-difficulty="easy">Easy</p>
+                    <p data-difficulty="medium">Medium</p>
+                    <p data-difficulty="hard">Hard</p>
+                    <p data-difficulty="custom">Custom</p>
+                    <div class="customDifficulty displayNone">
+                        <div class="customSettings">
+
+                            <div class="customMineX">
+                                <p>Width</p>
+                                <input type="number" min="1" max="100" value="10">
+                            </div>
+                            <div class="customMineY">
+                                <p>Height</p>
+                                <input type="number" min="1" max="100" value="10">
+                            </div>
+                            <div class="customMineCount">
+                                <p>Mines</p>
+                                <input type="number" min="1" max="100" value="35">
+                            </div>
+                        </div>
+                        <div class="customConfirmation">
+                            <p>Confirm</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="playButton displayNone">
+                    <p>Play!</p>
+                </div>
+            </div>
+            <div class="lobbyPlayers">
+                <div class="lobbyPlayer1">
+                    <p></p>
+                    <div class="frame"></div>
+                </div>
+                <div class="lobbyPlayer2 noPlayer">
+                    <p>Waiting for player...</p>
+                    <div class="frame"></div>
+                </div>
+                <div class="lobbyPlayer3 noPlayer">
+                    <p>Waiting for player...</p>
+                    <div class="frame"></div>
+                </div>
+                <div class="lobbyPlayer4 noPlayer">
+                    <p>Waiting for player...</p>
+                    <div class="frame"></div>
+                </div>
+
+            </div>
+        </div>
+        <div class="boardArea displayNone">
+            <div class="boardMenu">
+                <div class="frame"></div>
+                <div class="zoomMenu">
+
+                    <div class="zoomIn">
+                        <p>+</p>
+                    </div>
+                    <div class="zoomOut">
+                        <p>-</p>
+                    </div>
+                </div>
+
+                <div class="boardBackToMenu">
+                    <p>Back to Menu</p>
+                </div>
+            </div>
+
+       
+
+            <div class="board">
+               
+                <div class="multiplayerCursors"></div>
+
+                <div class="topAreaWrapper">
+                <div class="topArea">
+                    <div class="mineCounter">
+                        <div class="mineCounter0"></div>
+                        <div class="mineCounter1"></div>
+                        <div class="mineCounter2"></div>
+                    </div>
+                    
+                    <div class="smileyFace">
+                        
+                    </div>
+                    <div class="timer">
+                        <div class="timer0"></div>
+                        <div class="timer1"></div>
+                        <div class="timer2"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bottomAreaWrapper">
+
+                <div class="bottomArea">
+                    
+                    
+                </div>
+                
+                
+                
+            </div>
+            
+        </div>
+        <div class="boardPlayersWrapper">
+
+            <div class="boardPlayers">
+                
+            </div>
+            <div class="frame"></div>
+        </div>
+    </div>
+
+    <div class="lobbyBrowser displayNone">
+        <div class="frame"></div>
+        <div class="backToMenu">Back to Menu</div>
+
+        <div class="lobbyBrowserPlayerDetails">
+                <p>Username: <span>X</span></p>
+           
+        </div>
+
+        <div class="availableLobbiesWrapper">
+
+            <div class="availableLobbies">
+                <div class="availableLobby">
+                    <p class="lobbyHostName"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <div class="backgroundImage">
+        <img src="img/bg.svg" alt="">
+         </div>
+</body>
+</html>
