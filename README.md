@@ -12,7 +12,8 @@ Real-time co-op Minesweeper for up to four players, right in the browser. Create
 - **Live co-op board.** Every reveal, flag and win or loss reaches all players instantly over WebSockets.
 - **Shared cursors.** See where your friends are pointing.
 - **Personal flags.** Flags show their owner's colour, only the owner can remove them, and the scoreboard counts each player's flags.
-- **Classic controls.** Left-click to reveal, right-click to flag, hold on a number to preview and release to *chord* (open all its neighbours once its flags are placed).
+- **Plays on phones and tablets.** Touch controls, a board that sizes itself to the screen, and layouts for phones, tablets and landscape.
+- **English and Spanish.** Picked automatically from the browser, switchable at any time, and remembered.
 - **Four difficulties:** Easy (15×15, 40 mines), Medium (29×20, 135), Hard (29×29, 200) and Custom (up to 100×100).
 - **Server-authoritative.** The board only exists on the server; clients receive just the cells that get revealed, so nobody can peek at the mines.
 - **Original pixel-art look.** Every graphic is drawn from code (see [Artwork](#artwork)).
@@ -21,6 +22,23 @@ Real-time co-op Minesweeper for up to four players, right in the browser. Create
 |---|---|---|
 | ![Main menu](docs/menu.png) | ![Lobby](docs/lobby.png) | ![Game over](docs/game-over.png) |
 
+## Controls
+
+| | Mouse | Touch screen |
+|---|---|---|
+| Reveal a cell | Left-click | Tap |
+| Place / remove your flag | Right-click | Long-press (or turn on **Flag mode** and tap) |
+| Open everything around a number (*chord*) | Click the number once its flags are placed | Tap the number once its flags are placed |
+| Restart | Click the smiley | Tap the smiley |
+| Zoom, back to menu | Hover the panel in the top-right corner | Tap the panel in the top-right corner |
+| Scoreboard | Hover the panel on the left | Tap the panel on the left |
+
+Big boards scroll on small screens; the counters and the smiley stay in view.
+
+| Phone: menu | Phone: lobby | Phone: game |
+|---|---|---|
+| ![Phone menu](docs/mobile.png) | ![Phone lobby](docs/mobile-lobby.png) | ![Phone game](docs/mobile-game.png) |
+
 ## How it works
 
 ```
@@ -28,7 +46,7 @@ Browser (public/)                               Node.js server (server/)
 ─────────────────                               ────────────────────────
 main.js    wires messages and buttons    ◄──►   index.js     Express + WebSocket on one port
 socket.js  WebSocket client                 WS   players.js   connected players, names, colours
-board.js   cells, flags, cursors, chording       game/lobbies.js  lobbies and game flow
+board.js   cells, sizing, mouse + touch input    game/lobbies.js  lobbies and game flow
 lobby.js   lobby and lobby browser               game/board.js    mines, flood fill, win check
 i18n.js    English / Spanish texts                protocol.js  message codes
 ```
@@ -82,15 +100,30 @@ docs/              screenshots
 
 ## Deployment
 
-The server is a plain Node.js app, so any host that runs Node works. On a Plesk server:
+The server is a plain Node.js app that listens on `PORT`. A typical production setup is a process manager to keep it running, plus a web server in front of it for HTTPS:
 
-1. Upload the project (without `node_modules`) to the domain's folder.
-2. In Plesk, open the domain's **Node.js** page and set:
-   - **Application root** and **Document root**: the project folder and its `public` folder
-   - **Application startup file**: `server/index.js`
-3. Click **NPM install**, then **Enable Node.js**.
+1. Upload the project and install dependencies: `npm ci --omit=dev`.
+2. Run it with [pm2](https://pm2.keymetrics.io/), which restarts it if it crashes and starts it at boot:
 
-Plesk serves the app over HTTPS and restarts it automatically if it stops.
+   ```bash
+   PORT=3101 pm2 start server/index.js --name minesweeper
+   pm2 save
+   pm2 startup
+   ```
+
+3. Put a reverse proxy in front of it that also forwards WebSocket upgrades. For nginx:
+
+   ```nginx
+   location / {
+       proxy_pass http://127.0.0.1:3101;
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection "upgrade";
+       proxy_set_header Host $host;
+   }
+   ```
+
+The proxy handles HTTPS and certificate renewals, so the game itself never deals with certificates.
 
 ## Artwork
 
